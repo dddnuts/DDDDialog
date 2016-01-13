@@ -15,7 +15,16 @@ namespace DDD
                         var builder = new AndroidJavaObject("android.app.AlertDialog$Builder", activity);
                         builder.Call<AndroidJavaObject>("setMessage", message);
                         builder.Call<AndroidJavaObject>("setPositiveButton", positive, new OnClickListener(dialogDelegate, true));
-                        builder.Call<AndroidJavaObject>("setNegativeButton", negative, new OnClickListener(dialogDelegate, false));
+
+                        var cancelable = !string.IsNullOrEmpty(negative);
+                        builder.Call<AndroidJavaObject>("setCancelable", cancelable);
+
+                        if (cancelable)
+                        {
+                            builder.Call<AndroidJavaObject>("setNegativeButton", negative, new OnClickListener(dialogDelegate, false));
+                        }
+
+                        builder.Call<AndroidJavaObject>("setOnCancelListener", new OnCancelListener(dialogDelegate));
 
                         var dialog = builder.Call<AndroidJavaObject>("create");
                         dialog.Call("show");
@@ -40,6 +49,25 @@ namespace DDD
                     return;
 
                 dialogDelegate.HandleResult(positive);
+            }
+        }
+
+        private class OnCancelListener : AndroidJavaProxy
+        {
+            private IDialogDelegate dialogDelegate;
+
+            public OnCancelListener(IDialogDelegate dialogDelegate)
+                : base("android.content.DialogInterface$OnCancelListener")
+            {
+                this.dialogDelegate = dialogDelegate;
+            }
+
+            public void onCancel(AndroidJavaObject dialog)
+            {
+                if (dialogDelegate == null)
+                    return;
+
+                dialogDelegate.HandleResult(false);
             }
         }
     }
